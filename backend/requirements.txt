@@ -1,0 +1,14 @@
+Flask
+Flask-SQLAlchemy
+Werkzeug
+python-dotenv
+psycopg2-binary # For PostgreSQL, if used in production
+pytest
+pytest-flask
+bcrypt # For password hashing
+PyJWT # For JWT tokens (future use)
+passlib # Alternative for password hashing (future use or if preferred)
+SQLAlchemy # Added to ensure it's available if not pulled by Flask-SQLAlchemy
+Flask-Migrate # For database migrations (good practice)
+ marshmallow # For serialization/deserialization (good practice)
+ flask-cors # For enabling CORS if frontend is on a different domain

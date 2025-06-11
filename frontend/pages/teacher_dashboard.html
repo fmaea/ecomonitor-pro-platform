@@ -1,0 +1,19 @@
+<!-- teacher_dashboard.html -->
+<section id="teacher-dashboard-page">
+    <h1>My Taught Courses</h1>
+    <div id="teacher-actions">
+        <a href="#create-course" class="button">Create New Course</a>
+        <!-- This link should ideally trigger a route that loads course_create_teacher.html -->
+    </div>
+    <div id="teacher-courses-list">
+        <!-- Taught courses will be listed here by JavaScript -->
+        <p>Loading your courses...</p>
+    </div>
+</section>
+<!--
+    JS in app.js (or a dedicated teacher.js) will:
+    1. Fetch taught courses from GET /courses/teaching (via api.js and auth.js for token).
+    2. For each course, potentially use a course_card_teacher.html template (or build HTML dynamically).
+    3. Render the list into #teacher-courses-list.
+    4. Each course card should link to #manage-course/:id.
+-->
