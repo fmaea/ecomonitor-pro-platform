@@ -1,16 +1,3 @@
-# EcoMonitor Pro Training Platform
-
-A web-based platform for environmental monitoring education.
-
-## Directory Structure
-
-*   `frontend/`: Contains the frontend application code.
-*   `backend/`: Contains the backend application code.
-*   `database/`: Contains database-related scripts and files.
-*   `docs/`: Contains project documentation.
-
----
-## 项目概览 (中文)
 您好！非常感谢您对智慧环监在线学习平台的关注。针对您提出的问题，我将对项目的核心功能、已实现功能、待开发功能以及测试方法进行详细说明。
 
 **1. 项目主要功能**
