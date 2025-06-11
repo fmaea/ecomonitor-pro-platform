@@ -1,0 +1,18 @@
+<!-- login.html -->
+<section id="login-page">
+    <h2>Login</h2>
+    <form id="login-form">
+        <div>
+            <label for="username_or_email">Username or Email:</label>
+            <input type="text" id="username_or_email" name="username_or_email" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+        <div id="login-error" class="error-message"></div>
+    </form>
+    <p>Don't have an account? <a href="#register">Register here</a>.</p>
+</section>
+<!-- JS in auth.js and app.js will handle form submission and dynamic loading -->

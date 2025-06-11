@@ -1,0 +1,59 @@
+<!-- course_manage_teacher.html -->
+<section id="course-manage-page">
+    <h1 id="manage-course-title">Manage: [Course Title Loading...]</h1>
+
+    <section id="course-details-teacher">
+        <h2>Course Details</h2>
+        <!-- Form to edit course title, description? (Advanced) -->
+        <p id="course-description-display">Description loading...</p>
+    </section>
+
+    <section id="enrolled-students-section">
+        <h2>Enrolled Students</h2>
+        <div id="enrolled-students-list">
+            <!-- Students will be listed here -->
+            <p>Loading enrolled students...</p>
+        </div>
+        <!-- Form to enroll new student? (POST /courses/:id/enrollments) -->
+    </section>
+
+    <section id="course-chapters-teacher">
+        <h2>Chapters</h2>
+        <div id="chapters-list-teacher">
+            <!-- Chapters will be listed here, possibly with edit/delete options -->
+            <p>Loading chapters...</p>
+        </div>
+        <!-- Button/Form to add a new chapter (POST /courses/:id/chapters) -->
+        <button id="add-chapter-btn">Add New Chapter</button>
+        <div id="add-chapter-form-container" style="display:none;">
+            <h3>Add Chapter</h3>
+            <!-- Form fields: title, content, order -->
+        </div>
+    </section>
+
+    <section id="course-assignments-teacher">
+        <h2>Assignments</h2>
+        <div id="assignments-list-teacher">
+            <!-- Assignments will be listed here, possibly with edit/delete options -->
+            <p>Loading assignments...</p>
+        </div>
+        <!-- Button/Form to add a new assignment (POST /courses/:id/assignments) -->
+        <button id="add-assignment-btn">Add New Assignment</button>
+        <div id="add-assignment-form-container" style="display:none;">
+            <h3>Add Assignment</h3>
+            <!-- Form fields: title, description, due_date, chapter_id (optional) -->
+        </div>
+    </section>
+
+</section>
+<!--
+    JS in app.js (or a dedicated teacher_course_manage.js) will:
+    1. Parse course ID from URL hash.
+    2. Fetch course details (GET /courses/:id - public route, or teacher specific if exists).
+    3. Fetch enrolled students (GET /courses/:id/students - teacher route).
+    4. Fetch chapters (already part of course details or separate GET /courses/:id/chapters).
+    5. Fetch assignments (GET /courses/:id/assignments - might need teacher version or use student one and filter).
+    6. Populate the respective sections.
+    7. Handle forms for adding chapters and assignments (POST to respective endpoints).
+    8. Handle forms for enrolling students.
+-->

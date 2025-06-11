@@ -1,0 +1,26 @@
+<!-- course_create_teacher.html -->
+<section id="create-course-page">
+    <h1>Create New Course</h1>
+    <form id="create-course-form">
+        <div>
+            <label for="course-title-input">Course Title:</label>
+            <input type="text" id="course-title-input" name="title" required>
+        </div>
+        <div>
+            <label for="course-description-input">Course Description:</label>
+            <textarea id="course-description-input" name="description" rows="5"></textarea>
+        </div>
+        <button type="submit">Create Course</button>
+        <div id="create-course-error" class="error-message"></div>
+        <div id="create-course-success" class="success-message"></div>
+    </form>
+</section>
+<!--
+    JS in app.js or teacher.js will handle this form:
+    1. Add event listener to form submission.
+    2. On submit, gather data (title, description).
+    3. Call an API function (e.g., createCourse(courseData) in a teacher_api.js or similar).
+       This function will use fetchApi to POST /courses/ with the data.
+    4. Handle success: display message, maybe redirect to #manage-course/:new_course_id.
+    5. Handle error: display error message.
+-->

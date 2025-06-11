@@ -1,0 +1,48 @@
+<!-- profile.html -->
+<section id="profile-page">
+    <h1>My Profile</h1>
+    <form id="profile-form">
+        <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" readonly disabled>
+            <!-- Username typically not editable -->
+        </div>
+        <div>
+            <label for="email">Email:</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        <div>
+            <label for="first_name">First Name:</label>
+            <input type="text" id="first_name" name="first_name">
+        </div>
+        <div>
+            <label for="last_name">Last Name:</label>
+            <input type="text" id="last_name" name="last_name">
+        </div>
+        <!-- Profile picture URL could be added here if desired -->
+        <!-- <label for="profile_picture_url">Profile Picture URL:</label> -->
+        <!-- <input type="text" id="profile_picture_url" name="profile_picture_url"> -->
+
+        <button type="submit">Update Profile</button>
+        <div id="profile-error" class="error-message"></div>
+        <div id="profile-success" class="success-message"></div>
+    </form>
+
+    <section id="change-password-section">
+        <h2>Change Password</h2>
+        <p><em>(Password change functionality is not implemented in this basic version.)</em></p>
+        <!--
+            A real implementation would require:
+            - Current password field
+            - New password field
+            - Confirm new password field
+            - A separate API endpoint (e.g., PUT /users/profile/password)
+        -->
+    </section>
+</section>
+<!--
+    JS in app.js (specifically showProfilePage) will:
+    1. Fetch current user data from GET /users/profile.
+    2. Populate the form fields.
+    3. Handle form submission to PUT /users/profile with updated data.
+-->
