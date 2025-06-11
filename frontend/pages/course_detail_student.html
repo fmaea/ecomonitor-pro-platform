@@ -1,0 +1,29 @@
+<!-- course_detail_student.html -->
+<section id="course-detail-page">
+    <h1 id="course-title">Course Title Loading...</h1>
+
+    <article id="course-description">
+        <p>Course description loading...</p>
+    </article>
+
+    <h2>Chapters</h2>
+    <div id="course-chapters-list">
+        <!-- Chapters will be listed here -->
+        <p>Loading chapters...</p>
+    </div>
+
+    <h2>Assignments</h2>
+    <div id="course-assignments-list">
+        <!-- Assignments will be listed here -->
+        <p>Loading assignments...</p>
+    </div>
+</section>
+<!--
+    JS in app.js (or a dedicated student_course_view.js) will:
+    1. Parse course ID from the URL hash (e.g., #course-detail/:id).
+    2. Fetch course details from GET /courses/my-courses/:id. This should include chapters.
+    3. Populate #course-title and #course-description.
+    4. Render chapters into #course-chapters-list. Each chapter might have its own content view.
+    5. Fetch assignments for this course from GET /courses/:id/assignments.
+    6. Render assignments into #course-assignments-list. Each assignment should link to a submission page/form.
+-->

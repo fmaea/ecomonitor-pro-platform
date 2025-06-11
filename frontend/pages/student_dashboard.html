@@ -1,0 +1,15 @@
+<!-- student_dashboard.html -->
+<section id="student-dashboard-page">
+    <h1>My Enrolled Courses</h1>
+    <div id="student-courses-list">
+        <!-- Courses will be listed here by JavaScript -->
+        <p>Loading your courses...</p>
+    </div>
+</section>
+<!--
+    JS in app.js (or a dedicated student.js) will:
+    1. Fetch enrolled courses from GET /courses/my-courses (via api.js and auth.js for token).
+    2. For each course, potentially use a course_card_student.html template (or build HTML dynamically).
+    3. Render the list into #student-courses-list.
+    4. Each course card should link to #course-detail/:id.
+-->
