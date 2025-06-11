@@ -2,7 +2,7 @@
 FROM node:18-alpine AS base
 
 # Set the working directory
-WORKDIR /app/client
+WORKDIR /ecomonitor-pro-platform/client
 
 # Copy package.json and package-lock.json
 COPY client/package*.json ./
@@ -20,7 +20,7 @@ RUN npm run build
 FROM nginx:alpine
 
 # Copy the built application from the build stage
-COPY --from=base /app/client/dist /usr/share/nginx/html
+COPY --from=base /ecomonitor-pro-platform/client/dist /usr/share/nginx/html
 
 # Expose port 80
 EXPOSE 80
