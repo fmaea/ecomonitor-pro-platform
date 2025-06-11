@@ -8,9 +8,11 @@ import {
   ManyToMany,
   JoinTable,
   JoinColumn,
+  OneToMany, // Added OneToMany
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Tag } from './tag.entity';
+import { ChapterContentUnit } from '../../courses/entities/chapter-content-unit.entity'; // Import ChapterContentUnit
 
 export enum ResourceType {
   TEXT = 'text',
@@ -60,4 +62,7 @@ export class Resource {
 
   @UpdateDateColumn({ type: 'timestamp with time zone', default: () => 'CURRENT_TIMESTAMP', onUpdate: 'CURRENT_TIMESTAMP' })
   updatedAt: Date;
+
+  @OneToMany(() => ChapterContentUnit, (contentUnit) => contentUnit.resource)
+  chapterUsages: ChapterContentUnit[];
 }

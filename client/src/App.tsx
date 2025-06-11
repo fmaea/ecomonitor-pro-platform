@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import TeacherProtectedRoute from './components/auth/TeacherProtectedRoute'; // Import TeacherProtectedRoute
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -11,7 +12,10 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ProfilePage from './pages/ProfilePage';
 import CourseListPage from './pages/CourseListPage';
-import CourseDetailPage from './pages/CourseDetailPage'; // Import CourseDetailPage
+import CourseDetailPage from './pages/CourseDetailPage';
+import MyResourcesPage from './pages/teacher/MyResourcesPage';
+import ResourceFormPage from './pages/teacher/ResourceFormPage';
+import ManageChapterContentPage from './pages/teacher/ManageChapterContentPage'; // Import ManageChapterContentPage
 
 // Layout component to include Navbar and Footer
 const AppLayout: React.FC = () => {
@@ -42,7 +46,29 @@ function App() {
                 <ProfilePage />
               </ProtectedRoute>
             } />
-            {/* Add other routes here */}
+            {/* Teacher specific routes */}
+            <Route path="/teacher/resources" element={
+              <TeacherProtectedRoute>
+                <MyResourcesPage />
+              </TeacherProtectedRoute>
+            } />
+            {/* Add other routes here, e.g., /teacher/resources/new, /teacher/resources/edit/:id */}
+            {/* For now, /teacher/resources/new will be a placeholder until its page is created */}
+             <Route path="/teacher/resources/new" element={
+              <TeacherProtectedRoute>
+                <ResourceFormPage />
+              </TeacherProtectedRoute>
+            } />
+             <Route path="/teacher/resources/edit/:resourceId" element={
+              <TeacherProtectedRoute>
+                <ResourceFormPage />
+              </TeacherProtectedRoute>
+            } />
+            <Route path="/teacher/courses/:courseId/chapters/:chapterId/manage-content" element={
+              <TeacherProtectedRoute>
+                <ManageChapterContentPage />
+              </TeacherProtectedRoute>
+            } />
           </Route>
         </Routes>
       </Router>

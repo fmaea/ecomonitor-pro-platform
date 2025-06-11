@@ -16,12 +16,15 @@ const Navbar: React.FC = () => {
       <div>
         <Link to="/" style={{ marginRight: '1rem' }}>Home</Link>
         <Link to="/courses" style={{ marginRight: '1rem' }}>Courses</Link>
+        {user?.role === 'teacher' && (
+          <Link to="/teacher/resources" style={{ marginRight: '1rem' }}>My Resources</Link>
+        )}
       </div>
       <div>
         {isAuthenticated ? (
           <>
             <span style={{ marginRight: '1rem' }}>
-              Welcome, {user?.firstName || user?.username}!
+              Welcome, {user?.firstName || user?.username}! (Role: {user?.role})
             </span>
             <Link to="/profile" style={{ marginRight: '1rem' }}>Profile</Link>
             <button onClick={handleLogout}>Logout</button>

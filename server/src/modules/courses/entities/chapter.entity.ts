@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany, // Added OneToMany
 } from 'typeorm';
 import { Course } from './course.entity';
+import { ChapterContentUnit } from './chapter-content-unit.entity'; // Import ChapterContentUnit
 
 @Entity('chapters')
 export class Chapter {
@@ -35,4 +37,7 @@ export class Chapter {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => ChapterContentUnit, (contentUnit) => contentUnit.chapter, { cascade: true })
+  contentUnits: ChapterContentUnit[];
 }

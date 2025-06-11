@@ -1,13 +1,18 @@
-import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, InternalServerErrorException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, getManager } from 'typeorm'; // Consider EntityManager for complex transactions if needed
 import { Course } from './entities/course.entity';
 import { Chapter } from './entities/chapter.entity';
+import { ChapterContentUnit } from './entities/chapter-content-unit.entity'; // Import ChapterContentUnit
+import { Resource } from '../resources/entities/resource.entity'; // Import Resource for return type
 import { User } from '../users/entities/user.entity';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { AddResourceToChapterDto } from './dto/add-resource-to-chapter.dto';
+import { ChapterResourceOrderUpdateItemDto } from './dto/update-chapter-resource-order.dto';
+
 
 @Injectable()
 export class CoursesService {
@@ -16,6 +21,10 @@ export class CoursesService {
     private coursesRepository: Repository<Course>,
     @InjectRepository(Chapter)
     private chaptersRepository: Repository<Chapter>,
+    @InjectRepository(ChapterContentUnit) // Inject ChapterContentUnit repository
+    private chapterContentUnitsRepository: Repository<ChapterContentUnit>,
+    @InjectRepository(Resource) // Inject Resource repository for validation
+    private resourcesRepository: Repository<Resource>,
   ) {}
 
   // --- Course Methods ---
@@ -174,5 +183,140 @@ export class CoursesService {
       throw new ForbiddenException('You are not authorized to perform this action on this course.');
     }
     return course;
+  }
+
+  // --- Chapter Resource Linking Methods (Stubs) ---
+
+  async addResourceToChapter(
+    courseId: number,
+    chapterId: number,
+    addResourceDto: AddResourceToChapterDto,
+    teacher: User
+  ): Promise<ChapterContentUnit> {
+    const course = await this.findCourseByIdWithAuthCheck(courseId, teacher.id);
+    const chapter = await this.chaptersRepository.findOne({ where: { id: chapterId, courseId: course.id } });
+    if (!chapter) {
+      throw new NotFoundException(`Chapter with ID ${chapterId} in course ${courseId} not found.`);
+    }
+
+    const resource = await this.resourcesRepository.findOne({ where: { id: addResourceDto.resourceId }});
+    if (!resource) {
+        throw new NotFoundException(`Resource with ID ${addResourceDto.resourceId} not found.`);
+    }
+
+    // Check for existing unique constraint (chapterId, resourceId)
+    const existingLink = await this.chapterContentUnitsRepository.findOne({
+        where: { chapterId: chapter.id, resourceId: resource.id }
+    });
+    if (existingLink) {
+        throw new BadRequestException(`Resource with ID ${resource.id} is already linked to chapter ID ${chapter.id}.`);
+    }
+
+    const newContentUnit = this.chapterContentUnitsRepository.create({
+      chapterId: chapter.id,
+      resourceId: resource.id, // from DTO
+      order: addResourceDto.order,
+    });
+    // console.log(`Attempting to add resource ${resource.id} to chapter ${chapter.id} with order ${addResourceDto.order}`);
+    try {
+      return await this.chapterContentUnitsRepository.save(newContentUnit);
+    } catch (error) {
+      // Log detailed error if it's a unique constraint violation or other DB issue
+      console.error("Error adding resource to chapter:", error);
+      if (error.code === '23505') { // Unique violation code for PostgreSQL
+          throw new BadRequestException('This resource is already added to this chapter or order conflicts (if order is unique).');
+      }
+      throw new InternalServerErrorException("Failed to add resource to chapter.");
+    }
+  }
+
+  async removeResourceFromChapter(
+    courseId: number,
+    chapterId: number,
+    resourceId: string, // resourceId from path, not contentUnitId
+    teacher: User
+  ): Promise<void> {
+    const course = await this.findCourseByIdWithAuthCheck(courseId, teacher.id);
+    const chapter = await this.chaptersRepository.findOne({ where: { id: chapterId, courseId: course.id } });
+    if (!chapter) {
+      throw new NotFoundException(`Chapter with ID ${chapterId} in course ${courseId} not found.`);
+    }
+
+    const contentUnit = await this.chapterContentUnitsRepository.findOne({
+      where: { chapterId: chapter.id, resourceId: resourceId },
+    });
+
+    if (!contentUnit) {
+      throw new NotFoundException(`Resource with ID ${resourceId} not found in chapter ${chapterId}.`);
+    }
+
+    // console.log(`Attempting to remove resource ${resourceId} from chapter ${chapter.id}`);
+    try {
+      await this.chapterContentUnitsRepository.remove(contentUnit);
+    } catch (error) {
+      console.error("Error removing resource from chapter:", error);
+      throw new InternalServerErrorException("Failed to remove resource from chapter.");
+    }
+  }
+
+  async updateResourceOrderInChapter(
+    courseId: number,
+    chapterId: number,
+    orderUpdates: ChapterResourceOrderUpdateItemDto[],
+    teacher: User
+  ): Promise<ChapterContentUnit[]> {
+    const course = await this.findCourseByIdWithAuthCheck(courseId, teacher.id);
+    const chapter = await this.chaptersRepository.findOne({ where: { id: chapterId, courseId: course.id } });
+    if (!chapter) {
+      throw new NotFoundException(`Chapter with ID ${chapterId} in course ${courseId} not found.`);
+    }
+
+    // This is a complex operation if it needs to be transactional and handle order conflicts.
+    // For a simpler approach, fetch all, update order, save all.
+    // Or, update each item individually. Let's do individual updates for now.
+    // A transaction would be better for atomicity.
+
+    const updatedUnits: ChapterContentUnit[] = [];
+    for (const update of orderUpdates) {
+        const unit = await this.chapterContentUnitsRepository.findOne({where: {id: update.contentUnitId, chapterId: chapter.id}});
+        if (unit) {
+            unit.order = update.order;
+            // Consider potential unique constraint violations on 'order' if (chapter, order) is unique
+            try {
+                updatedUnits.push(await this.chapterContentUnitsRepository.save(unit));
+            } catch (error) {
+                 console.error(`Error updating order for content unit ${unit.id}:`, error);
+                 // Collect errors or throw immediately
+                 throw new InternalServerErrorException(`Failed to update order for unit ${unit.id}.`);
+            }
+        } else {
+            console.warn(`Content unit with ID ${update.contentUnitId} not found in chapter ${chapterId}. Skipping.`);
+        }
+    }
+    // console.log(`Order updated for resources in chapter ${chapter.id}`);
+    // Re-fetch to confirm order or return updatedUnits
+    return this.chapterContentUnitsRepository.find({ where: { chapterId: chapter.id }, order: { order: 'ASC' }});
+  }
+
+  async getResourcesForChapter(chapterId: number): Promise<Resource[]> {
+    const chapter = await this.chaptersRepository.findOne({
+        where: { id: chapterId },
+        // relations: ['contentUnits', 'contentUnits.resource', 'contentUnits.resource.tags'], // Deeply load related resources and their tags
+    });
+
+    if (!chapter) {
+        throw new NotFoundException(`Chapter with ID ${chapterId} not found.`);
+    }
+
+    // Fetch ChapterContentUnits with their associated Resource, ordered by 'order'
+    const contentUnits = await this.chapterContentUnitsRepository.find({
+        where: { chapterId: chapter.id },
+        relations: ['resource', 'resource.tags', 'resource.teacher'], // Ensure 'resource' and its sub-relations are loaded
+        order: { order: 'ASC' },
+    });
+
+    // Extract the Resource objects from the ChapterContentUnits
+    // Filter out any null/undefined resources just in case of data integrity issues
+    return contentUnits.map(unit => unit.resource).filter(resource => resource != null);
   }
 }
