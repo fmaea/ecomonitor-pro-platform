@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom'; // Import Link
 import { getCourseById } from '../../services/courseService';
-import { Course } from '../../types/course'; // Chapter type is implicitly used by Course.chapters
-import ChapterListItem from '../../components/courses/ChapterListItem'; // Import ChapterListItem
+import { Course, Chapter as ChapterType } from '../../types/course'; // Explicitly import ChapterType
+import { useAuth } from '../../contexts/AuthContext'; // Import useAuth
+import ChapterListItem from '../../components/courses/ChapterListItem';
 
 // Basic styling (can be moved to a CSS file)
 const styles: { [key: string]: React.CSSProperties } = {
@@ -39,6 +40,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     listStyle: 'none',
     padding: 0,
   },
+  chapterManagementItem: { // Style for the li containing ChapterListItem and Manage button
+    marginBottom: '10px',
+    padding: '10px',
+    border: '1px solid #f0f0f0',
+    borderRadius: '4px',
+    backgroundColor: '#fafafa',
+  },
+  manageButton: {
+    marginTop: '10px',
+    padding: '8px 12px',
+    backgroundColor: '#007bff',
+    color: 'white',
+    textDecoration: 'none',
+    borderRadius: '4px',
+    display: 'inline-block', // To allow margin-top
+    fontSize: '0.9rem',
+  },
   // chapterListItem, chapterTitle, chapterContentPreview can be removed if fully handled by ChapterListItem
   loading: {
     textAlign: 'center',
@@ -58,6 +76,7 @@ const CourseDetailPage: React.FC = () => {
   const [course, setCourse] = useState<Course | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth(); // Get current user from AuthContext
 
   useEffect(() => {
     if (!courseId) {
@@ -114,8 +133,18 @@ const CourseDetailPage: React.FC = () => {
           <ul style={styles.chapterList}>
             {course.chapters
               .sort((a, b) => a.order - b.order)
-              .map((chapter, index) => (
-                <ChapterListItem key={chapter.id} chapter={chapter} index={index} />
+              .map((chapter: ChapterType, index) => ( // Use ChapterType for clarity
+                <li key={chapter.id} style={styles.chapterManagementItem}>
+                  <ChapterListItem chapter={chapter} index={index} />
+                  {user && user.role === 'teacher' && course.teacherId === user.id && (
+                    <Link
+                      to={`/teacher/courses/${course.id}/chapters/${chapter.id}/manage-content`}
+                      style={styles.manageButton}
+                    >
+                      Manage Content
+                    </Link>
+                  )}
+                </li>
               ))}
           </ul>
         ) : (

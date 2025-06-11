@@ -10,13 +10,16 @@ import {
   ParseIntPipe,
   HttpCode,
   HttpStatus,
-  Query, // Added for potential pagination/filtering later
+  Query,
+  ParseUUIDPipe, // For resourceId if it's UUID
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
+import { AddResourceToChapterDto } from './dto/add-resource-to-chapter.dto'; // Import new DTO
+import { UpdateChapterResourceOrderDto } from './dto/update-chapter-resource-order.dto'; // Import new DTO
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -133,5 +136,54 @@ export class CoursesController {
   ) {
     // The service method `removeChapter` already checks if teacher owns the parent course
     return this.coursesService.removeChapter(chapterId, teacher);
+  }
+
+  // --- Chapter Resource Linking Endpoints ---
+
+  @Post(':courseId/chapters/:chapterId/resources')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.TEACHER)
+  @HttpCode(HttpStatus.CREATED)
+  addResourceToChapter(
+    @Param('courseId', ParseIntPipe) courseId: number,
+    @Param('chapterId', ParseIntPipe) chapterId: number,
+    @Body() addResourceDto: AddResourceToChapterDto,
+    @GetCurrentUser() teacher: User,
+  ) {
+    return this.coursesService.addResourceToChapter(courseId, chapterId, addResourceDto, teacher);
+  }
+
+  @Delete(':courseId/chapters/:chapterId/resources/:resourceId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.TEACHER)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeResourceFromChapter(
+    @Param('courseId', ParseIntPipe) courseId: number,
+    @Param('chapterId', ParseIntPipe) chapterId: number,
+    @Param('resourceId', ParseUUIDPipe) resourceId: string, // Assuming resourceId is UUID
+    @GetCurrentUser() teacher: User,
+  ) {
+    return this.coursesService.removeResourceFromChapter(courseId, chapterId, resourceId, teacher);
+  }
+
+  @Patch(':courseId/chapters/:chapterId/resources/order')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.TEACHER)
+  updateResourceOrderInChapter(
+    @Param('courseId', ParseIntPipe) courseId: number,
+    @Param('chapterId', ParseIntPipe) chapterId: number,
+    @Body() updateOrderDto: UpdateChapterResourceOrderDto,
+    @GetCurrentUser() teacher: User,
+  ) {
+    return this.coursesService.updateResourceOrderInChapter(courseId, chapterId, updateOrderDto.orderUpdates, teacher);
+  }
+
+  @Get(':courseId/chapters/:chapterId/resources')
+  // Public or protected as needed. For now, public.
+  getResourcesForChapter(
+    // @Param('courseId', ParseIntPipe) courseId: number, // Not strictly needed if chapterId is globally unique
+    @Param('chapterId', ParseIntPipe) chapterId: number,
+  ) {
+    return this.coursesService.getResourcesForChapter(chapterId);
   }
 }

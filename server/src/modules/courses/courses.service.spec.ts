@@ -4,14 +4,18 @@ import { Repository } from 'typeorm';
 import { CoursesService } from './courses.service';
 import { Course } from './entities/course.entity';
 import { Chapter } from './entities/chapter.entity';
+import { ChapterContentUnit } from './entities/chapter-content-unit.entity'; // Added
+import { Resource } from '../resources/entities/resource.entity'; // Added
 import { User, UserRole } from '../users/entities/user.entity';
 import { CreateCourseDto } from './dto/create-course.dto';
 import { UpdateCourseDto } from './dto/update-course.dto';
 import { CreateChapterDto } from './dto/create-chapter.dto';
 import { UpdateChapterDto } from './dto/update-chapter.dto';
-import { NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { AddResourceToChapterDto } from './dto/add-resource-to-chapter.dto'; // Added
+import { ChapterResourceOrderUpdateItemDto } from './dto/update-chapter-resource-order.dto'; // Added
+import { NotFoundException, ForbiddenException, InternalServerErrorException, BadRequestException } from '@nestjs/common'; // Added BadRequestException
 
-// Mock User for testing
+// Mock User for testing - Added authoredResources for completeness
 const mockUser = (id: number, role: UserRole = UserRole.TEACHER): User => ({
   id,
   username: `user${id}`,
@@ -23,7 +27,14 @@ const mockUser = (id: number, role: UserRole = UserRole.TEACHER): User => ({
   updatedAt: new Date(),
   hashPassword: jest.fn(),
   validatePassword: jest.fn(),
-  courses: [], // Initialize as empty or provide mock courses if needed
+  courses: [],
+  authoredResources: [], // Added
+});
+
+const mockResource = (id: string, teacherId: number): Partial<Resource> => ({
+  id,
+  title: `Resource ${id}`,
+  teacherId,
 });
 
 
@@ -31,6 +42,9 @@ describe('CoursesService', () => {
   let service: CoursesService;
   let courseRepository: Repository<Course>;
   let chapterRepository: Repository<Chapter>;
+  let chapterContentUnitsRepository: Repository<ChapterContentUnit>; // Added
+  let resourcesRepository: Repository<Resource>; // Added
+
 
   const mockCourseRepository = {
     create: jest.fn(),
@@ -48,18 +62,35 @@ describe('CoursesService', () => {
     remove: jest.fn(),
   };
 
+  const mockChapterContentUnitsRepository = { // Added
+    create: jest.fn(),
+    save: jest.fn(),
+    find: jest.fn(),
+    findOne: jest.fn(),
+    remove: jest.fn(),
+  };
+
+  const mockResourcesRepository = { // Added
+      findOne: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CoursesService,
         { provide: getRepositoryToken(Course), useValue: mockCourseRepository },
         { provide: getRepositoryToken(Chapter), useValue: mockChapterRepository },
+        { provide: getRepositoryToken(ChapterContentUnit), useValue: mockChapterContentUnitsRepository }, // Added
+        { provide: getRepositoryToken(Resource), useValue: mockResourcesRepository }, // Added
       ],
     }).compile();
 
     service = module.get<CoursesService>(CoursesService);
     courseRepository = module.get<Repository<Course>>(getRepositoryToken(Course));
     chapterRepository = module.get<Repository<Chapter>>(getRepositoryToken(Chapter));
+    chapterContentUnitsRepository = module.get<Repository<ChapterContentUnit>>(getRepositoryToken(ChapterContentUnit)); // Added
+    resourcesRepository = module.get<Repository<Resource>>(getRepositoryToken(Resource)); // Added
+
 
     // Reset mocks before each test
     jest.clearAllMocks();
@@ -286,6 +317,163 @@ describe('CoursesService', () => {
       const anotherTeacher = mockUser(2); // Different teacher
       mockChapterRepository.findOne.mockResolvedValue(existingChapter); // Chapter's course is owned by 'teacher' (ID 1)
       await expect(service.removeChapter(chapterId, anotherTeacher)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  // --- Chapter Resource Linking Tests ---
+  describe('addResourceToChapter', () => {
+    const teacher = mockUser(1);
+    const courseId = 1;
+    const chapterId = 1;
+    const resourceId = 'uuid-resource-1';
+    const addDto: AddResourceToChapterDto = { resourceId, order: 1 };
+    const mockCourse = { id: courseId, teacherId: teacher.id } as Course;
+    const mockChapter = { id: chapterId, courseId } as Chapter;
+    const mockResourceEntity = mockResource(resourceId, teacher.id) as Resource;
+    const mockContentUnit = { id: 'uuid-ccu-1', chapterId, resourceId, order: 1 } as ChapterContentUnit;
+
+    beforeEach(() => {
+        mockCourseRepository.findOne.mockResolvedValue(mockCourse);
+        mockChapterRepository.findOne.mockResolvedValue(mockChapter);
+        mockResourcesRepository.findOne.mockResolvedValue(mockResourceEntity);
+        mockChapterContentUnitsRepository.findOne.mockResolvedValue(null); // Assume not existing for most tests
+        mockChapterContentUnitsRepository.create.mockReturnValue(mockContentUnit);
+        mockChapterContentUnitsRepository.save.mockResolvedValue(mockContentUnit);
+    });
+
+    it('should successfully add a resource to a chapter', async () => {
+      const result = await service.addResourceToChapter(courseId, chapterId, addDto, teacher);
+      expect(mockCourseRepository.findOne).toHaveBeenCalledWith({ where: { id: courseId } });
+      expect(mockChapterRepository.findOne).toHaveBeenCalledWith({ where: { id: chapterId, courseId } });
+      expect(mockResourcesRepository.findOne).toHaveBeenCalledWith({ where: { id: resourceId } });
+      expect(mockChapterContentUnitsRepository.create).toHaveBeenCalledWith({ chapterId, resourceId, order: addDto.order });
+      expect(mockChapterContentUnitsRepository.save).toHaveBeenCalledWith(mockContentUnit);
+      expect(result).toEqual(mockContentUnit);
+    });
+
+    it('should throw ForbiddenException if teacher does not own course', async () => {
+        const otherTeacher = mockUser(2);
+        // Course is owned by teacher 1
+        await expect(service.addResourceToChapter(courseId, chapterId, addDto, otherTeacher)).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should throw NotFoundException if chapter not found in course', async () => {
+        mockChapterRepository.findOne.mockResolvedValue(null);
+        await expect(service.addResourceToChapter(courseId, chapterId, addDto, teacher)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw NotFoundException if resource not found', async () => {
+        mockResourcesRepository.findOne.mockResolvedValue(null);
+        await expect(service.addResourceToChapter(courseId, chapterId, addDto, teacher)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should throw BadRequestException if resource already linked to chapter', async () => {
+        mockChapterContentUnitsRepository.findOne.mockResolvedValue(mockContentUnit); // Resource already exists
+        await expect(service.addResourceToChapter(courseId, chapterId, addDto, teacher)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw InternalServerErrorException on save failure', async () => {
+        mockChapterContentUnitsRepository.save.mockRejectedValue(new Error('DB save error'));
+        await expect(service.addResourceToChapter(courseId, chapterId, addDto, teacher)).rejects.toThrow(InternalServerErrorException);
+    });
+  });
+
+  describe('removeResourceFromChapter', () => {
+    const teacher = mockUser(1);
+    const courseId = 1;
+    const chapterId = 1;
+    const resourceId = 'uuid-resource-1';
+    const mockCourse = { id: courseId, teacherId: teacher.id } as Course;
+    const mockChapter = { id: chapterId, courseId } as Chapter;
+    const mockContentUnit = { id: 'uuid-ccu-1', chapterId, resourceId } as ChapterContentUnit;
+
+    beforeEach(() => {
+        mockCourseRepository.findOne.mockResolvedValue(mockCourse);
+        mockChapterRepository.findOne.mockResolvedValue(mockChapter);
+        mockChapterContentUnitsRepository.findOne.mockResolvedValue(mockContentUnit);
+        mockChapterContentUnitsRepository.remove.mockResolvedValue(undefined);
+    });
+
+    it('should successfully remove a resource from a chapter', async () => {
+      await service.removeResourceFromChapter(courseId, chapterId, resourceId, teacher);
+      expect(mockChapterContentUnitsRepository.findOne).toHaveBeenCalledWith({ where: { chapterId, resourceId } });
+      expect(mockChapterContentUnitsRepository.remove).toHaveBeenCalledWith(mockContentUnit);
+    });
+
+    it('should throw NotFoundException if content unit not found', async () => {
+        mockChapterContentUnitsRepository.findOne.mockResolvedValue(null);
+        await expect(service.removeResourceFromChapter(courseId, chapterId, resourceId, teacher)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('updateResourceOrderInChapter', () => {
+    const teacher = mockUser(1);
+    const courseId = 1;
+    const chapterId = 1;
+    const orderUpdates: ChapterResourceOrderUpdateItemDto[] = [
+        { contentUnitId: 'uuid-ccu-1', order: 2 },
+        { contentUnitId: 'uuid-ccu-2', order: 1 },
+    ];
+    const mockCourse = { id: courseId, teacherId: teacher.id } as Course;
+    const mockChapter = { id: chapterId, courseId } as Chapter;
+    const mockUnit1 = { id: 'uuid-ccu-1', chapterId, resourceId: 'res1', order: 1 } as ChapterContentUnit;
+    const mockUnit2 = { id: 'uuid-ccu-2', chapterId, resourceId: 'res2', order: 2 } as ChapterContentUnit;
+
+    beforeEach(() => {
+        mockCourseRepository.findOne.mockResolvedValue(mockCourse);
+        mockChapterRepository.findOne.mockResolvedValue(mockChapter);
+        mockChapterContentUnitsRepository.findOne
+            .mockImplementation(async ({where}: any) => {
+                if (where.id === 'uuid-ccu-1') return mockUnit1;
+                if (where.id === 'uuid-ccu-2') return mockUnit2;
+                return null;
+            });
+        mockChapterContentUnitsRepository.save.mockImplementation(async (unit: any) => unit); // Save returns the unit
+        mockChapterContentUnitsRepository.find.mockResolvedValue([ // Simulates re-fetch after update
+            { ...mockUnit2, order: 1 },
+            { ...mockUnit1, order: 2 }
+        ]);
+    });
+
+    it('should update the order of resources in a chapter', async () => {
+      const result = await service.updateResourceOrderInChapter(courseId, chapterId, orderUpdates, teacher);
+      expect(mockChapterContentUnitsRepository.save).toHaveBeenCalledTimes(2);
+      expect(mockChapterContentUnitsRepository.save).toHaveBeenCalledWith({ ...mockUnit1, order: 2 });
+      expect(mockChapterContentUnitsRepository.save).toHaveBeenCalledWith({ ...mockUnit2, order: 1 });
+      expect(result[0].order).toBe(1);
+      expect(result[1].order).toBe(2);
+    });
+  });
+
+  describe('getResourcesForChapter', () => {
+    const chapterId = 1;
+    const resource1 = mockResource('res1', 1) as Resource;
+    const resource2 = mockResource('res2', 1) as Resource;
+    const contentUnits = [
+        { id: 'uuid1', chapterId, resourceId: 'res1', order: 1, resource: resource1 },
+        { id: 'uuid2', chapterId, resourceId: 'res2', order: 2, resource: resource2 },
+    ] as ChapterContentUnit[];
+    const mockChapter = { id: chapterId, contentUnits } as Chapter;
+
+    beforeEach(() => {
+        mockChapterRepository.findOne.mockResolvedValue(mockChapter); // For initial chapter check
+        mockChapterContentUnitsRepository.find.mockResolvedValue(contentUnits);
+    });
+
+    it('should return resources for a chapter, ordered by `order`', async () => {
+      const result = await service.getResourcesForChapter(chapterId);
+      expect(mockChapterContentUnitsRepository.find).toHaveBeenCalledWith({
+          where: { chapterId },
+          relations: ['resource', 'resource.tags', 'resource.teacher'],
+          order: { order: 'ASC' },
+      });
+      expect(result).toEqual([resource1, resource2]);
+    });
+
+    it('should throw NotFoundException if chapter not found', async () => {
+        mockChapterRepository.findOne.mockResolvedValue(null); // Make getResourcesForChapter's initial check fail
+        mockChapterContentUnitsRepository.find.mockResolvedValue([]); // Subsequent find in getResourcesForChapter will be empty
+        await expect(service.getResourcesForChapter(chapterId)).rejects.toThrow(NotFoundException);
     });
   });
 });
