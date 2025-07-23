@@ -13,6 +13,8 @@ RUN npm install
 # Copy the rest of the server application code
 COPY server ./
 
+RUN cat tsconfig.json
+
 # Build the NestJS application
 RUN npm run build
 
